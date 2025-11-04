@@ -129,6 +129,11 @@ apiClient.interceptors.response.use(
           toast.error(data.message || 'Resource not found.');
           break;
 
+        case 409:
+          // Conflict - usually duplicate data
+          toast.error(data.message || 'This resource already exists.');
+          break;
+
         case 422:
           // Validation errors
           if (data.errors) {
