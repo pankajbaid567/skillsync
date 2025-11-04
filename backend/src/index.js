@@ -32,9 +32,26 @@ const logger = pino({
 app.use(helmet());
 
 // CORS configuration - allow multiple origins
-const allowedOrigins = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',')
-  : ['http://localhost:5173'];
+let allowedOrigins = [];
+
+if (process.env.NODE_ENV === 'production') {
+  // In production, allow both local dev and production frontend
+  allowedOrigins = [
+    'http://localhost:5173',
+    'https://skillsync-green.vercel.app',
+  ];
+  // Also add custom CORS_ORIGIN if provided
+  if (process.env.CORS_ORIGIN) {
+    allowedOrigins = [...allowedOrigins, ...process.env.CORS_ORIGIN.split(',')];
+  }
+} else {
+  // In development, use CORS_ORIGIN or default to localhost
+  allowedOrigins = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:5173'];
+}
+
+logger.info(`🔐 CORS allowed origins: ${allowedOrigins.join(', ')}`);
 
 app.use(
   cors({
@@ -43,6 +60,7 @@ app.use(
       if (!origin) return callback(null, true);
       
       if (allowedOrigins.indexOf(origin) === -1) {
+        logger.warn(`❌ CORS blocked origin: ${origin}`);
         const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
         return callback(new Error(msg), false);
       }
@@ -86,17 +104,9 @@ app.use(errorHandler);
 // Setup Socket.IO with same CORS policy
 const io = new Server(httpServer, {
   cors: {
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-        return callback(new Error(msg), false);
-      }
-      return callback(null, true);
-    },
+    origin: allowedOrigins,
     credentials: true,
+    methods: ['GET', 'POST'],
   },
 });
 
