@@ -102,4 +102,31 @@ export const authService = {
       throw new AppError('Invalid or expired token', 401);
     }
   },
+
+  /**
+   * Get user by ID
+   */
+  async getUserById(userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        bio: true,
+        avatarUrl: true,
+        skillsOffered: true,
+        skillsWanted: true,
+        rating: true,
+        isVerified: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    return user;
+  },
 };

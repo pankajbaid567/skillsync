@@ -1,5 +1,6 @@
 import express from 'express';
 import { authController } from '../controllers/auth.controller.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -23,5 +24,12 @@ router.post('/login', authController.login);
  * @access  Public
  */
 router.post('/verify', authController.verify);
+
+/**
+ * @route   GET /api/auth/me
+ * @desc    Get current user profile
+ * @access  Private
+ */
+router.get('/me', authenticateToken, authController.me);
 
 export default router;

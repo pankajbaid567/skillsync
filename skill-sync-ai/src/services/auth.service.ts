@@ -10,26 +10,32 @@ import { AuthResponse, LoginCredentials, SignupData, User } from '@/types';
  * User signup
  */
 export const signup = async (data: SignupData): Promise<AuthResponse> => {
-  const response = await apiClient.post<AuthResponse>('/auth/signup', data);
+  const response = await apiClient.post<{ success: boolean; data: AuthResponse; message: string }>('/auth/signup', data);
+  
+  // Extract the actual data from the API response wrapper
+  const { token, user } = response.data.data;
   
   // Store token and user data
-  setAuthToken(response.data.token);
-  setUserData(response.data.user);
+  setAuthToken(token);
+  setUserData(user);
   
-  return response.data;
+  return { token, user };
 };
 
 /**
  * User login
  */
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
-  const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
+  const response = await apiClient.post<{ success: boolean; data: AuthResponse; message: string }>('/auth/login', credentials);
+  
+  // Extract the actual data from the API response wrapper
+  const { token, user } = response.data.data;
   
   // Store token and user data
-  setAuthToken(response.data.token);
-  setUserData(response.data.user);
+  setAuthToken(token);
+  setUserData(user);
   
-  return response.data;
+  return { token, user };
 };
 
 /**
@@ -47,12 +53,15 @@ export const logout = async (): Promise<void> => {
  * Get current user profile
  */
 export const getCurrentUser = async (): Promise<User> => {
-  const response = await apiClient.get<User>('/auth/me');
+  const response = await apiClient.get<{ success: boolean; data: User; message: string }>('/auth/me');
+  
+  // Extract the actual data from the API response wrapper
+  const user = response.data.data;
   
   // Update stored user data
-  setUserData(response.data);
+  setUserData(user);
   
-  return response.data;
+  return user;
 };
 
 /**

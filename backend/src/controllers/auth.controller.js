@@ -80,4 +80,19 @@ export const authController = {
       message: 'Token is valid',
     });
   }),
+
+  /**
+   * GET /api/auth/me
+   * Get current user profile
+   */
+  me: asyncHandler(async (req, res) => {
+    // req.userId is set by the auth middleware
+    const user = await authService.getUserById(req.userId);
+
+    res.status(200).json({
+      success: true,
+      data: user,
+      message: 'User profile retrieved',
+    });
+  }),
 };
