@@ -51,6 +51,9 @@ if (process.env.NODE_ENV === 'production') {
     : ['http://localhost:5173'];
 }
 
+// Normalize origins (remove trailing slashes)
+allowedOrigins = allowedOrigins.map(origin => origin.replace(/\/$/, ''));
+
 logger.info(`🔐 CORS allowed origins: ${allowedOrigins.join(', ')}`);
 
 app.use(
@@ -59,7 +62,10 @@ app.use(
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
       
-      if (allowedOrigins.indexOf(origin) === -1) {
+      // Normalize the incoming origin (remove trailing slash)
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      
+      if (allowedOrigins.indexOf(normalizedOrigin) === -1) {
         logger.warn(`❌ CORS blocked origin: ${origin}`);
         const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
         return callback(new Error(msg), false);
@@ -67,6 +73,8 @@ app.use(
       return callback(null, true);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 app.use(express.json());
