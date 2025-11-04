@@ -195,7 +195,15 @@ export const setUserData = (user: any) => {
 
 export const getUserData = (): any | null => {
   const data = localStorage.getItem(USER_KEY);
-  return data ? JSON.parse(data) : null;
+  if (!data || data === 'undefined' || data === 'null') {
+    return null;
+  }
+  try {
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Failed to parse user data:', error);
+    return null;
+  }
 };
 
 export default apiClient;
