@@ -36,8 +36,9 @@ export const authMiddleware = async (req, res, next) => {
       throw new AppError('User not found', 404);
     }
 
-    // Attach user to request
+    // Attach user and userId to request
     req.user = user;
+    req.userId = user.id;
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -49,6 +50,9 @@ export const authMiddleware = async (req, res, next) => {
     }
   }
 };
+
+// Alias for better naming
+export const authenticateToken = authMiddleware;
 
 // Optional auth middleware (doesn't throw error if no token)
 export const optionalAuthMiddleware = async (req, res, next) => {
