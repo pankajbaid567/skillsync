@@ -14,9 +14,24 @@ import { EmptyState } from "@/components/EmptyState";
 import { Sparkles, Bell, TrendingUp, Users, CheckCircle, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("swaps");
+  const { user } = useAuth();
+  
+  // Get user initials from actual user data
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+  
+  const userInitials = user ? getUserInitials(user.name) : 'U';
+  const firstName = user?.name.split(' ')[0] || 'User';
 
   // Mock data for demonstration
   const activeSwaps = [
@@ -100,9 +115,9 @@ const Dashboard = () => {
                 </span>
               </Button>
               <Avatar className="h-9 w-9 ring-2 ring-primary/10 cursor-pointer">
-                <AvatarImage src="" alt="User" />
+                <AvatarImage src={user?.avatar || ""} alt={user?.name || "User"} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-sm">
-                  JD
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -113,7 +128,7 @@ const Dashboard = () => {
             <div className="container mx-auto p-6 space-y-6">
               {/* Welcome Section */}
               <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold font-display">Welcome back, John! 👋</h1>
+                <h1 className="text-3xl font-bold font-display">Welcome back, {firstName}! 👋</h1>
                 <p className="text-muted-foreground">Here's what's happening with your skill swaps today.</p>
               </div>
 
