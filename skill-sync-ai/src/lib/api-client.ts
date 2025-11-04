@@ -110,19 +110,29 @@ apiClient.interceptors.response.use(
       const { status, data } = error.response;
 
       switch (status) {
+        case 400:
+          // Bad Request
+          toast.error(data.message || 'Invalid request. Please check your input.');
+          break;
+
         case 401:
-          // Unauthorized - clear token and redirect to login
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
-          
-          if (!window.location.pathname.includes('/login')) {
+          // Unauthorized
+          if (window.location.pathname.includes('/login') || window.location.pathname.includes('/signup')) {
+            // Show specific error message for login/signup
+            toast.error(data.message || 'Invalid email or password.');
+          } else {
+            // Session expired - clear token and redirect
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
             toast.error('Session expired. Please login again.');
-            window.location.href = '/login';
+            setTimeout(() => {
+              window.location.href = '/login';
+            }, 1500);
           }
           break;
 
         case 403:
-          toast.error('Access denied. You don\'t have permission to perform this action.');
+          toast.error(data.message || 'Access denied. You don\'t have permission to perform this action.');
           break;
 
         case 404:
@@ -130,34 +140,43 @@ apiClient.interceptors.response.use(
           break;
 
         case 409:
-          // Conflict - usually duplicate data
-          toast.error(data.message || 'This resource already exists.');
+          // Conflict - usually duplicate data (e.g., email already exists)
+          toast.error(data.message || 'This email is already registered. Please login or use a different email.');
           break;
 
         case 422:
           // Validation errors
           if (data.errors) {
-            Object.entries(data.errors).forEach(([field, messages]) => {
-              toast.error(`${field}: ${messages.join(', ')}`);
-            });
+            // Show first error only to avoid spam
+            const firstError = Object.entries(data.errors)[0];
+            if (firstError) {
+              const [field, messages] = firstError as [string, string[]];
+              toast.error(`${field}: ${messages[0]}`);
+            }
           } else {
-            toast.error(data.message || 'Validation error occurred.');
+            toast.error(data.message || 'Please check your input and try again.');
           }
           break;
 
         case 429:
-          toast.error('Too many requests. Please try again later.');
+          toast.error('Too many requests. Please slow down and try again in a moment.');
           break;
 
         case 500:
+          toast.error('Server error. Our team has been notified. Please try again later.');
+          break;
+
         case 502:
         case 503:
+          toast.error('Service temporarily unavailable. Please try again in a moment.');
+          break;
+
         case 504:
-          toast.error('Server error. Please try again later.');
+          toast.error('Request timeout. Please check your connection and try again.');
           break;
 
         default:
-          toast.error(data.message || 'An unexpected error occurred.');
+          toast.error(data.message || 'Something went wrong. Please try again.');
       }
     } else if (error.request) {
       // Request made but no response received

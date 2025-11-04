@@ -27,6 +27,11 @@ const Login = () => {
       return;
     }
 
+    if (!email.includes('@')) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -36,8 +41,9 @@ const Login = () => {
       const from = (location.state as any)?.from?.pathname || "/dashboard";
       navigate(from, { replace: true });
     } catch (error: any) {
+      // Error is already handled by AuthContext and API client
+      // Just log for debugging
       console.error("Login error:", error);
-      // Error toast is already shown by the API client
     } finally {
       setIsLoading(false);
     }

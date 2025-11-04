@@ -25,10 +25,25 @@ export const authController = {
    */
   signup: asyncHandler(async (req, res) => {
     // Validate input
-    const validatedData = signupSchema.parse(req.body);
+    const result = signupSchema.safeParse(req.body);
+    
+    if (!result.success) {
+      const errors = result.error.errors.reduce((acc, err) => {
+        const field = err.path[0];
+        if (!acc[field]) acc[field] = [];
+        acc[field].push(err.message);
+        return acc;
+      }, {});
+      
+      return res.status(422).json({
+        success: false,
+        message: 'Validation failed. Please check your input.',
+        errors,
+      });
+    }
 
     // Create user
-    const { token, user } = await authService.signup(validatedData);
+    const { token, user } = await authService.signup(result.data);
 
     res.status(201).json({
       success: true,
@@ -36,7 +51,7 @@ export const authController = {
         token,
         user,
       },
-      message: 'User registered successfully',
+      message: 'Account created successfully! Welcome to SkillSync.',
     });
   }),
 
@@ -46,9 +61,25 @@ export const authController = {
    */
   login: asyncHandler(async (req, res) => {
     // Validate input
-    const { email, password } = loginSchema.parse(req.body);
+    const result = loginSchema.safeParse(req.body);
+    
+    if (!result.success) {
+      const errors = result.error.errors.reduce((acc, err) => {
+        const field = err.path[0];
+        if (!acc[field]) acc[field] = [];
+        acc[field].push(err.message);
+        return acc;
+      }, {});
+      
+      return res.status(422).json({
+        success: false,
+        message: 'Please provide valid email and password.',
+        errors,
+      });
+    }
 
     // Login user
+    const { email, password } = result.data;
     const { token, user } = await authService.login(email, password);
 
     res.status(200).json({
@@ -57,7 +88,7 @@ export const authController = {
         token,
         user,
       },
-      message: 'Login successful',
+      message: `Welcome back, ${user.name}!`,
     });
   }),
 

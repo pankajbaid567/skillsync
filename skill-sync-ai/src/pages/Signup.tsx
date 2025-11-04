@@ -32,13 +32,32 @@ const Signup = () => {
       return;
     }
 
+    if (formData.name.length < 2) {
+      toast.error("Name must be at least 2 characters long");
+      return;
+    }
+
+    if (!formData.email.includes('@') || !formData.email.includes('.')) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
 
     if (formData.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
+    // Check password strength
+    const hasNumber = /\d/.test(formData.password);
+    const hasLetter = /[a-zA-Z]/.test(formData.password);
+    
+    if (!hasNumber || !hasLetter) {
+      toast.error("Password must contain both letters and numbers");
       return;
     }
 
@@ -53,8 +72,9 @@ const Signup = () => {
       await signup(formData.name, formData.email, formData.password);
       navigate("/dashboard", { replace: true });
     } catch (error: any) {
+      // Error is already handled by AuthContext and API client
+      // Just log for debugging
       console.error("Signup error:", error);
-      // Error toast is already shown by the API client
     } finally {
       setIsLoading(false);
     }

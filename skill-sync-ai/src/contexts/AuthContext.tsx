@@ -63,9 +63,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       const response = await authService.login({ email, password });
       setUser(response.user);
-      toast.success('Welcome back!');
+      toast.success(`Welcome back, ${response.user.name}!`);
     } catch (error: any) {
       console.error('Login failed:', error);
+      
+      // Error is already handled by API client interceptor
+      // But we can add additional context here if needed
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+      
+      // Only show toast if it wasn't already shown by interceptor
+      if (error.response?.status !== 401 && error.response?.status !== 422) {
+        toast.error(errorMessage);
+      }
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -80,9 +90,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       const response = await authService.signup({ name, email, password });
       setUser(response.user);
-      toast.success('Account created successfully!');
+      toast.success(`Welcome to SkillSync, ${response.user.name}! 🎉`);
     } catch (error: any) {
       console.error('Signup failed:', error);
+      
+      // Error is already handled by API client interceptor
+      // But we can add additional context here if needed
+      const errorMessage = error.response?.data?.message || error.message || 'Signup failed';
+      
+      // Only show toast if it wasn't already shown by interceptor
+      if (error.response?.status !== 409 && error.response?.status !== 422) {
+        toast.error(errorMessage);
+      }
+      
       throw error;
     } finally {
       setIsLoading(false);
