@@ -38,66 +38,67 @@ app.use(
 );
 
 // CORS configuration - allow multiple origins
-let allowedOrigins = [];
+let allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://skillsync-green.vercel.app',
+];
 
-if (process.env.NODE_ENV === 'production') {
-  // In production, allow both local dev and production frontend
-  allowedOrigins = [
-    'http://localhost:5173',
-    'https://skillsync-green.vercel.app',
-  ];
-  // Also add custom CORS_ORIGIN if provided
-  if (process.env.CORS_ORIGIN) {
-    allowedOrigins = [...allowedOrigins, ...process.env.CORS_ORIGIN.split(',')];
-  }
-} else {
-  // In development, use CORS_ORIGIN or default to localhost
-  allowedOrigins = process.env.CORS_ORIGIN 
-    ? process.env.CORS_ORIGIN.split(',')
-    : ['http://localhost:5173'];
+// Add custom CORS_ORIGIN if provided
+if (process.env.CORS_ORIGIN) {
+  const customOrigins = process.env.CORS_ORIGIN.split(',').map(o => o.trim());
+  allowedOrigins = [...allowedOrigins, ...customOrigins];
 }
 
 // Normalize origins (remove trailing slashes)
 allowedOrigins = allowedOrigins.map(origin => origin.replace(/\/$/, ''));
 
+logger.info(`🔐 Environment: ${process.env.NODE_ENV || 'development'}`);
 logger.info(`🔐 CORS allowed origins: ${allowedOrigins.join(', ')}`);
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
-      
-      // Normalize the incoming origin (remove trailing slash)
-      const normalizedOrigin = origin.replace(/\/$/, '');
-      
-      if (allowedOrigins.indexOf(normalizedOrigin) === -1) {
-        logger.warn(`❌ CORS blocked origin: ${origin}`);
-        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-        return callback(new Error(msg), false);
-      }
+// Simple and robust CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, curl)
+    if (!origin) {
+      logger.info('✅ CORS: No origin (allowed)');
       return callback(null, true);
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-    allowedHeaders: [
-      'Content-Type', 
-      'Authorization', 
-      'X-Requested-With',
-      'Accept',
-      'Origin',
-      'Access-Control-Request-Method',
-      'Access-Control-Request-Headers'
-    ],
-    exposedHeaders: ['Content-Length', 'X-Request-Id'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-    maxAge: 86400, // 24 hours
-  })
-);
+    }
+    
+    // Normalize the incoming origin
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    // Check if origin is allowed
+    if (allowedOrigins.indexOf(normalizedOrigin) !== -1) {
+      logger.info(`✅ CORS: Allowed origin - ${origin}`);
+      return callback(null, true);
+    }
+    
+    logger.warn(`❌ CORS: Blocked origin - ${origin}`);
+    logger.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
+    return callback(new Error('Not allowed by CORS'), false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers',
+  ],
+  exposedHeaders: ['Content-Length', 'X-Request-Id'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  maxAge: 86400, // Cache preflight for 24 hours
+};
 
-// Handle OPTIONS requests explicitly
-app.options('*', cors());
+app.use(cors(corsOptions));
+
+// Explicitly handle preflight requests
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
