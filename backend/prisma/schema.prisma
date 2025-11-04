@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int         @id @default(autoincrement())
+  email          String      @unique
+  passwordHash   String
+  name           String
+  bio            String?
+  avatarUrl      String?
+  skillsOffered  String[]
+  skillsWanted   String[]
+  rating         Float       @default(0)
+  isVerified     Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  
+  // Relations
+  swapsRequested SkillSwap[] @relation("RequestedSwaps")
+  swapsReceived  SkillSwap[] @relation("ReceivedSwaps")
+  reviewsGiven   Review[]    @relation("GivenReviews")
+  reviewsGot     Review[]    @relation("GotReviews")
+  messages       Message[]
+
+  @@map("users")
+}
+
+model SkillSwap {
+  id             Int       @id @default(autoincrement())
+  requester      User      @relation("RequestedSwaps", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterId    Int
+  receiver       User      @relation("ReceivedSwaps", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId     Int
+  skillOffered   String
+  skillRequested String
+  status         String    @default("PENDING") // PENDING, ACCEPTED, IN_PROGRESS, COMPLETED, REJECTED, CANCELLED
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  // Relations
+  messages       Message[]
+  reviews        Review[]
+
+  @@map("skill_swaps")
+}
+
+model Review {
+  id              Int       @id @default(autoincrement())
+  reviewer        User      @relation("GivenReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewerId      Int
+  reviewedUser    User      @relation("GotReviews", fields: [reviewedUserId], references: [id], onDelete: Cascade)
+  reviewedUserId  Int
+  swap            SkillSwap @relation(fields: [swapId], references: [id], onDelete: Cascade)
+  swapId          Int
+  rating          Int       // 1-5
+  comment         String?
+  createdAt       DateTime  @default(now())
+
+  @@map("reviews")
+}
+
+model Message {
+  id        Int       @id @default(autoincrement())
+  swap      SkillSwap @relation(fields: [swapId], references: [id], onDelete: Cascade)
+  swapId    Int
+  sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  Int
+  content   String
+  createdAt DateTime  @default(now())
+
+  @@map("messages")
+}
