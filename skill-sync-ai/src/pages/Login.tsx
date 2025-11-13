@@ -37,8 +37,8 @@ const Login = () => {
     try {
       await login(email, password);
       
-      // Redirect to the page they tried to visit or dashboard
-      const from = (location.state as any)?.from?.pathname || "/dashboard";
+      // Redirect to the page they tried to visit or home page
+      const from = (location.state as any)?.from?.pathname || "/";
       navigate(from, { replace: true });
     } catch (error: any) {
       // Error is already handled by AuthContext and API client

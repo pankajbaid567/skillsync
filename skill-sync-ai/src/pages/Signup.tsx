@@ -70,7 +70,7 @@ const Signup = () => {
 
     try {
       await signup(formData.name, formData.email, formData.password);
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     } catch (error: any) {
       // Error is already handled by AuthContext and API client
       // Just log for debugging
