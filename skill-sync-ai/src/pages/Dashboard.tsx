@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,10 +12,12 @@ import { SkillCard } from "@/components/SkillCard";
 import { AIMatchCard } from "@/components/AIMatchCard";
 import { ReviewCard } from "@/components/ReviewCard";
 import { EmptyState } from "@/components/EmptyState";
-import { Sparkles, Bell, TrendingUp, Users, CheckCircle, Clock } from "lucide-react";
+import { Sparkles, Bell, TrendingUp, Users, CheckCircle, Clock, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getMySwaps } from "@/services/swap.service";
+import { getMatches } from "@/services/match.service";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("swaps");
@@ -33,46 +36,22 @@ const Dashboard = () => {
   const userInitials = user ? getUserInitials(user.name) : 'U';
   const firstName = user?.name.split(' ')[0] || 'User';
 
-  // Mock data for demonstration
-  const activeSwaps = [
-    {
-      id: 1,
-      partnerName: "Alice Johnson",
-      skillOffered: "React Development",
-      skillWanted: "UI/UX Design",
-      progress: 65,
-      stage: "in-progress",
-    },
-    {
-      id: 2,
-      partnerName: "Bob Smith",
-      skillOffered: "Python",
-      skillWanted: "JavaScript",
-      progress: 30,
-      stage: "accepted",
-    },
-  ];
+  // Fetch real swap data
+  const { data: swapsData, isLoading: swapsLoading, error: swapsError } = useQuery({
+    queryKey: ['mySwaps'],
+    queryFn: getMySwaps,
+    enabled: !!user, // Only fetch if user is logged in
+  });
 
-  const aiMatches = [
-    {
-      name: "Emma Wilson",
-      skillOffered: "GraphQL",
-      skillWanted: "TypeScript",
-      compatibility: 95,
-    },
-    {
-      name: "Michael Brown",
-      skillOffered: "Node.js",
-      skillWanted: "React",
-      compatibility: 88,
-    },
-    {
-      name: "Sarah Davis",
-      skillOffered: "AWS",
-      skillWanted: "Docker",
-      compatibility: 82,
-    },
-  ];
+  // Fetch real AI match data
+  const { data: matchesData, isLoading: matchesLoading, error: matchesError } = useQuery({
+    queryKey: ['aiMatches'],
+    queryFn: getMatches,
+    enabled: !!user, // Only fetch if user is logged in
+  });
+
+  const activeSwaps = swapsData || [];
+  const aiMatches = matchesData || [];
 
   const recentReviews = [
     {
@@ -189,53 +168,90 @@ const Dashboard = () => {
 
                 {/* Active Swaps Tab */}
                 <TabsContent value="swaps" className="space-y-4">
-                  {activeSwaps.map((swap) => (
-                    <Card key={swap.id} className="border-border/40 shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-12 w-12 ring-2 ring-primary/10">
-                              <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white">
-                                {swap.partnerName.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <CardTitle className="text-base">{swap.partnerName}</CardTitle>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
-                                  Teaching: {swap.skillOffered}
-                                </Badge>
-                                <Badge variant="secondary" className="text-xs bg-secondary/10 text-secondary border-secondary/20">
-                                  Learning: {swap.skillWanted}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-                          <Badge className={swap.stage === "in-progress" ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"}>
-                            {swap.stage === "in-progress" ? <Clock className="h-3 w-3 mr-1" /> : <CheckCircle className="h-3 w-3 mr-1" />}
-                            {swap.stage === "in-progress" ? "In Progress" : "Accepted"}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Progress</span>
-                            <span className="font-medium">{swap.progress}%</span>
-                          </div>
-                          <Progress value={swap.progress} className="h-2" />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1 rounded-xl">
-                            View Details
-                          </Button>
-                          <Button variant="default" size="sm" className="flex-1 rounded-xl">
-                            Message
-                          </Button>
+                  {swapsLoading ? (
+                    <Card className="border-border/40 shadow-md rounded-2xl">
+                      <CardContent className="flex items-center justify-center py-12">
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-8 w-8 animate-spin" />
+                          <p>Loading your swaps...</p>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  ) : swapsError ? (
+                    <Card className="border-border/40 shadow-md rounded-2xl">
+                      <CardContent className="py-12">
+                        <EmptyState 
+                          title="Error loading swaps"
+                          description="We couldn't load your swaps. Please try again later."
+                        />
+                      </CardContent>
+                    </Card>
+                  ) : activeSwaps.length === 0 ? (
+                    <Card className="border-border/40 shadow-md rounded-2xl">
+                      <CardContent className="py-12">
+                        <EmptyState 
+                          title="No active swaps yet"
+                          description="Start connecting with others to begin skill swaps!"
+                        />
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    activeSwaps.map((swap) => {
+                      // Determine partner based on current user
+                      const isRequester = swap.requesterId === user?.id;
+                      const partner = isRequester ? swap.receiver : swap.requester;
+                      const partnerName = partner?.name || 'Unknown User';
+                      const partnerInitials = partner?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+                      
+                      return (
+                        <Card key={swap.id} className="border-border/40 shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+                          <CardHeader>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-12 w-12 ring-2 ring-primary/10">
+                                  <AvatarImage src={partner?.avatarUrl} />
+                                  <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white">
+                                    {partnerInitials}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <CardTitle className="text-base">{partnerName}</CardTitle>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
+                                      Teaching: {swap.skillOffered}
+                                    </Badge>
+                                    <Badge variant="secondary" className="text-xs bg-secondary/10 text-secondary border-secondary/20">
+                                      Learning: {swap.skillRequested}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge className={
+                                swap.status === "IN_PROGRESS" || swap.status === "ACCEPTED" 
+                                  ? "bg-warning/10 text-warning border-warning/20" 
+                                  : swap.status === "COMPLETED"
+                                  ? "bg-success/10 text-success border-success/20"
+                                  : "bg-muted text-muted-foreground"
+                              }>
+                                {swap.status === "IN_PROGRESS" || swap.status === "ACCEPTED" ? <Clock className="h-3 w-3 mr-1" /> : <CheckCircle className="h-3 w-3 mr-1" />}
+                                {swap.status.replace('_', ' ')}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" className="flex-1 rounded-xl">
+                                View Details
+                              </Button>
+                              <Button variant="default" size="sm" className="flex-1 rounded-xl">
+                                Message
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
                 </TabsContent>
 
                 {/* AI Matches Tab */}

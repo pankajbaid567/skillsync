@@ -45,6 +45,7 @@ export interface AuthResponse {
 export enum SwapStatus {
   PENDING = 'PENDING',
   ACCEPTED = 'ACCEPTED',
+  IN_PROGRESS = 'IN_PROGRESS',
   REJECTED = 'REJECTED',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
@@ -53,22 +54,22 @@ export enum SwapStatus {
 export interface SkillSwap {
   id: number;
   requesterId: number;
-  providerId: number;
+  receiverId: number;
   skillOffered: string;
   skillRequested: string;
-  description?: string;
-  status: SwapStatus;
+  status: SwapStatus | string;
   createdAt: string;
   updatedAt: string;
   requester?: User;
-  provider?: User;
+  receiver?: User;
+  messages?: Message[];
+  reviews?: Review[];
 }
 
 export interface CreateSwapData {
-  providerId: number;
+  receiverId: number;
   skillOffered: string;
   skillRequested: string;
-  description?: string;
 }
 
 export interface UpdateSwapData {

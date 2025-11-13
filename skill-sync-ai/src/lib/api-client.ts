@@ -17,7 +17,15 @@ const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 // Token storage keys
 export const TOKEN_KEY = 'skillsync_token';
+export const REFRESH_TOKEN_KEY = 'skillsync_refresh_token';
 export const USER_KEY = 'skillsync_user';
+
+// Track if we're currently refreshing to prevent multiple refresh calls
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}> = [];
 
 /**
  * API Error Response Interface
@@ -116,18 +124,70 @@ apiClient.interceptors.response.use(
           break;
 
         case 401:
-          // Unauthorized
+          // Unauthorized - Try to refresh token
+          const originalRequest = error.config;
+          
           if (window.location.pathname.includes('/login') || window.location.pathname.includes('/signup')) {
             // Show specific error message for login/signup
             toast.error(data.message || 'Invalid email or password.');
-          } else {
-            // Session expired - clear token and redirect
+            break;
+          }
+
+          // Don't retry refresh endpoint itself
+          if (originalRequest?.url?.includes('/auth/refresh')) {
             localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
             toast.error('Session expired. Please login again.');
             setTimeout(() => {
               window.location.href = '/login';
             }, 1500);
+            break;
+          }
+
+          // Try to refresh the token
+          if (!isRefreshing) {
+            isRefreshing = true;
+
+            try {
+              const newToken = await refreshAccessToken();
+              isRefreshing = false;
+              processQueue(null, newToken);
+
+              // Retry original request with new token
+              if (originalRequest) {
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                return apiClient(originalRequest);
+              }
+            } catch (refreshError) {
+              isRefreshing = false;
+              processQueue(refreshError, null);
+              
+              localStorage.removeItem(TOKEN_KEY);
+              localStorage.removeItem(REFRESH_TOKEN_KEY);
+              localStorage.removeItem(USER_KEY);
+              toast.error('Session expired. Please login again.');
+              setTimeout(() => {
+                window.location.href = '/login';
+              }, 1500);
+              
+              return Promise.reject(refreshError);
+            }
+          } else {
+            // Already refreshing, queue this request
+            return new Promise((resolve, reject) => {
+              failedQueue.push({
+                resolve: (token: string) => {
+                  if (originalRequest) {
+                    originalRequest.headers.Authorization = `Bearer ${token}`;
+                    resolve(apiClient(originalRequest));
+                  }
+                },
+                reject: (err: any) => {
+                  reject(err);
+                },
+              });
+            });
           }
           break;
 
@@ -191,18 +251,75 @@ apiClient.interceptors.response.use(
 );
 
 /**
+ * Queue management for failed requests during token refresh
+ */
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token!);
+    }
+  });
+  
+  failedQueue = [];
+};
+
+/**
+ * Refresh the access token using the refresh token
+ */
+const refreshAccessToken = async (): Promise<string> => {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
+  }
+
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/auth/refresh`,
+      { refreshToken },
+      { 
+        headers: { 'Content-Type': 'application/json' },
+        timeout: REQUEST_TIMEOUT,
+      }
+    );
+
+    const { accessToken } = response.data.data;
+    localStorage.setItem(TOKEN_KEY, accessToken);
+    
+    return accessToken;
+  } catch (error) {
+    // Refresh failed, clear everything and redirect to login
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    throw error;
+  }
+};
+
+/**
  * Authentication helpers
  */
 export const setAuthToken = (token: string) => {
   localStorage.setItem(TOKEN_KEY, token);
 };
 
+export const setRefreshToken = (token: string) => {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+};
+
 export const getAuthToken = (): string | null => {
   return localStorage.getItem(TOKEN_KEY);
 };
 
+export const getRefreshToken = (): string | null => {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+};
+
 export const removeAuthToken = () => {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 };
 

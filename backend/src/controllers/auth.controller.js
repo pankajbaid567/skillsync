@@ -43,12 +43,14 @@ export const authController = {
     }
 
     // Create user
-    const { token, user } = await authService.signup(result.data);
+    const { accessToken, refreshToken, user } = await authService.signup(result.data);
 
     res.status(201).json({
       success: true,
       data: {
-        token,
+        accessToken,
+        refreshToken,
+        token: accessToken, // For backward compatibility
         user,
       },
       message: 'Account created successfully! Welcome to SkillSync.',
@@ -80,12 +82,14 @@ export const authController = {
 
     // Login user
     const { email, password } = result.data;
-    const { token, user } = await authService.login(email, password);
+    const { accessToken, refreshToken, user } = await authService.login(email, password);
 
     res.status(200).json({
       success: true,
       data: {
-        token,
+        accessToken,
+        refreshToken,
+        token: accessToken, // For backward compatibility
         user,
       },
       message: `Welcome back, ${user.name}!`,
@@ -124,6 +128,43 @@ export const authController = {
       success: true,
       data: user,
       message: 'User profile retrieved',
+    });
+  }),
+
+  /**
+   * POST /api/auth/refresh
+   * Refresh access token using refresh token
+   */
+  refresh: asyncHandler(async (req, res) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      throw new AppError('Refresh token is required', 400);
+    }
+
+    const { accessToken } = await authService.refreshAccessToken(refreshToken);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        accessToken,
+        token: accessToken, // For backward compatibility
+      },
+      message: 'Access token refreshed successfully',
+    });
+  }),
+
+  /**
+   * POST /api/auth/logout
+   * Logout user and invalidate refresh token
+   */
+  logout: asyncHandler(async (req, res) => {
+    // req.userId is set by the auth middleware
+    await authService.logout(req.userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully',
     });
   }),
 };

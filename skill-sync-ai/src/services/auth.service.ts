@@ -3,50 +3,79 @@
  * Handles all authentication-related API calls
  */
 
-import apiClient, { setAuthToken, setUserData, removeAuthToken } from '@/lib/api-client';
+import apiClient, { setAuthToken, setRefreshToken, setUserData, removeAuthToken } from '@/lib/api-client';
 import { AuthResponse, LoginCredentials, SignupData, User } from '@/types';
 
 /**
  * User signup
  */
 export const signup = async (data: SignupData): Promise<AuthResponse> => {
-  const response = await apiClient.post<{ success: boolean; data: AuthResponse; message: string }>('/auth/signup', data);
+  const response = await apiClient.post<{ 
+    success: boolean; 
+    data: { 
+      token: string; 
+      accessToken: string; 
+      refreshToken: string; 
+      user: User 
+    }; 
+    message: string 
+  }>('/auth/signup', data);
   
-  // Extract the actual data from the API response wrapper
-  const { token, user } = response.data.data;
+  // Extract tokens and user data from the API response
+  const { token, accessToken, refreshToken, user } = response.data.data;
   
-  // Store token and user data
-  setAuthToken(token);
+  // Store tokens and user data (use accessToken if available, fallback to token for compatibility)
+  setAuthToken(accessToken || token);
+  if (refreshToken) {
+    setRefreshToken(refreshToken);
+  }
   setUserData(user);
   
-  return { token, user };
+  return { token: accessToken || token, user };
 };
 
 /**
  * User login
  */
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
-  const response = await apiClient.post<{ success: boolean; data: AuthResponse; message: string }>('/auth/login', credentials);
+  const response = await apiClient.post<{ 
+    success: boolean; 
+    data: { 
+      token: string; 
+      accessToken: string; 
+      refreshToken: string; 
+      user: User 
+    }; 
+    message: string 
+  }>('/auth/login', credentials);
   
-  // Extract the actual data from the API response wrapper
-  const { token, user } = response.data.data;
+  // Extract tokens and user data from the API response
+  const { token, accessToken, refreshToken, user } = response.data.data;
   
-  // Store token and user data
-  setAuthToken(token);
+  // Store tokens and user data (use accessToken if available, fallback to token for compatibility)
+  setAuthToken(accessToken || token);
+  if (refreshToken) {
+    setRefreshToken(refreshToken);
+  }
   setUserData(user);
   
-  return { token, user };
+  return { token: accessToken || token, user };
 };
 
 /**
  * User logout
  */
 export const logout = async (): Promise<void> => {
-  // Clear local storage
-  removeAuthToken();
-  
-  // Optional: Call backend logout endpoint if you implement it
-  // await apiClient.post('/auth/logout');
+  try {
+    // Call backend logout endpoint to invalidate refresh token
+    await apiClient.post('/auth/logout');
+  } catch (error) {
+    // Even if backend call fails, clear local storage
+    console.error('Logout error:', error);
+  } finally {
+    // Clear local storage
+    removeAuthToken();
+  }
 };
 
 /**

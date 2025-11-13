@@ -10,7 +10,7 @@ import { MatchResult, User, DiscoveryFilters } from '@/types';
  * Get AI-powered matches for current user
  */
 export const getMatches = async (): Promise<MatchResult[]> => {
-  const response = await apiClient.get<MatchResult[]>('/matches');
+  const response = await apiClient.get<MatchResult[]>('/match/me');
   return response.data;
 };
 

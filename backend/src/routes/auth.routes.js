@@ -32,4 +32,18 @@ router.post('/verify', authController.verify);
  */
 router.get('/me', authenticateToken, authController.me);
 
+/**
+ * @route   POST /api/auth/refresh
+ * @desc    Refresh access token using refresh token
+ * @access  Public
+ */
+router.post('/refresh', authController.refresh);
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    Logout user and invalidate refresh token
+ * @access  Private
+ */
+router.post('/logout', authenticateToken, authController.logout);
+
 export default router;
