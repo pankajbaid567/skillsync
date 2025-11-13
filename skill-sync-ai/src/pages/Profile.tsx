@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,60 +9,63 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ReviewCard } from "@/components/ReviewCard";
 import { SwapRequestModal } from "@/components/SwapRequestModal";
-import { Star, MapPin, Calendar, Edit, Repeat, Mail, Sparkles } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { Star, MapPin, Calendar, Edit, Repeat, Mail, Sparkles, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Search, Bell } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Profile = () => {
   const [showSwapModal, setShowSwapModal] = useState(false);
+  const { user, isLoading: authLoading } = useAuth();
 
-  // Mock profile data
-  const profileData = {
-    name: "Jane Cooper",
-    avatar: "",
-    bio: "Passionate developer and lifelong learner. Love sharing knowledge and learning from others. Specializing in frontend development with a keen interest in AI and machine learning.",
-    location: "San Francisco, CA",
-    joinedDate: "January 2024",
-    rating: 4.8,
-    reviewCount: 15,
-    completedSwaps: 12,
-    skillsOffered: [
-      "React",
-      "TypeScript",
-      "Node.js",
-      "GraphQL",
-      "UI/UX Design",
-      "Tailwind CSS",
-    ],
-    skillsWanted: [
-      "Python",
-      "Machine Learning",
-      "AWS",
-      "Docker",
-      "Rust",
-    ],
+  // Format join date
+  const formatJoinDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
-  const reviews = [
-    {
-      reviewerName: "John Doe",
-      rating: 5,
-      comment: "Excellent mentor! Jane's teaching style is clear and patient. Learned so much about React hooks and state management.",
-      date: "2 days ago",
-    },
-    {
-      reviewerName: "Alice Johnson",
-      rating: 5,
-      comment: "Amazing experience! Jane really knows her stuff and makes complex topics easy to understand.",
-      date: "1 week ago",
-    },
-    {
-      reviewerName: "Bob Smith",
-      rating: 4,
-      comment: "Great teacher with deep knowledge of TypeScript. Very responsive to questions.",
-      date: "2 weeks ago",
-    },
-  ];
+  // Get user initials
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Show loading state
+  if (authLoading || !user) {
+    return (
+      <SidebarProvider>
+        <div className="flex h-screen w-full items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">Loading profile...</p>
+          </div>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  const profileData = {
+    name: user.name || "User",
+    avatar: user.avatar || "",
+    bio: user.bio || "No bio provided yet. Edit your profile to add a bio.",
+    location: user.location || "Location not set",
+    joinedDate: user.createdAt ? formatJoinDate(user.createdAt) : "Recently",
+    rating: user.rating || 0,
+    reviewCount: user.totalReviews || 0,
+    completedSwaps: 0, // This should come from swaps count
+    skillsOffered: user.skillsOffered || [],
+    skillsWanted: user.skillsWanted || [],
+  };
+
+  const userInitials = getUserInitials(profileData.name);
+
+  // TODO: Fetch real reviews from backend
+  const reviews: any[] = [];
 
   return (
     <SidebarProvider>
@@ -89,9 +93,9 @@ const Profile = () => {
                 </span>
               </Button>
               <Avatar className="h-9 w-9 ring-2 ring-primary/10 cursor-pointer">
-                <AvatarImage src="" alt="User" />
+                <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-sm">
-                  JD
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -181,16 +185,22 @@ const Profile = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {profileData.skillsOffered.map((skill, index) => (
-                        <Badge 
-                          key={index}
-                          className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 transition-colors rounded-xl px-3 py-1.5"
-                        >
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
+                    {profileData.skillsOffered.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {profileData.skillsOffered.map((skill, index) => (
+                          <Badge 
+                            key={index}
+                            className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 transition-colors rounded-xl px-3 py-1.5"
+                          >
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No skills offered yet. Edit your profile to add skills you can teach.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -203,16 +213,22 @@ const Profile = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {profileData.skillsWanted.map((skill, index) => (
-                        <Badge 
-                          key={index}
-                          className="bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20 transition-colors rounded-xl px-3 py-1.5"
-                        >
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
+                    {profileData.skillsWanted.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {profileData.skillsWanted.map((skill, index) => (
+                          <Badge 
+                            key={index}
+                            className="bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20 transition-colors rounded-xl px-3 py-1.5"
+                          >
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No skills wanted yet. Edit your profile to add skills you want to learn.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -221,22 +237,31 @@ const Profile = () => {
               <Card className="border-border/40 shadow-md rounded-2xl">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Reviews ({profileData.reviewCount})</CardTitle>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-5 w-5 fill-warning text-warning" />
-                    <span className="font-semibold">{profileData.rating}</span>
-                    <span className="text-sm text-muted-foreground">/ 5.0</span>
-                  </div>
+                  {profileData.rating > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Star className="h-5 w-5 fill-warning text-warning" />
+                      <span className="font-semibold">{profileData.rating.toFixed(1)}</span>
+                      <span className="text-sm text-muted-foreground">/ 5.0</span>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {reviews.map((review, index) => (
-                    <ReviewCard
-                      key={index}
-                      reviewerName={review.reviewerName}
-                      rating={review.rating}
-                      comment={review.comment}
-                      date={review.date}
+                  {reviews.length > 0 ? (
+                    reviews.map((review, index) => (
+                      <ReviewCard
+                        key={index}
+                        reviewerName={review.reviewerName}
+                        rating={review.rating}
+                        comment={review.comment}
+                        date={review.date}
+                      />
+                    ))
+                  ) : (
+                    <EmptyState
+                      title="No reviews yet"
+                      description="Complete skill swaps to start receiving reviews from other users."
                     />
-                  ))}
+                  )}
                 </CardContent>
               </Card>
 
