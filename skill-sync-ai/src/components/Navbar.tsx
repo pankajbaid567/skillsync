@@ -20,6 +20,7 @@ import {
 import { Sparkles, Search, Bell, MessageSquare, Brain, Menu, Home, Compass, Shuffle, Zap, User, Settings, LogOut, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Navbar = () => {
   const location = useLocation();
@@ -101,6 +102,9 @@ const Navbar = () => {
 
         {/* Right Section - Actions & User Menu */}
         <div className="flex items-center gap-2">
+          {/* Theme Toggle */}
+          <ThemeToggle />
+          
           {isAuthenticated ? (
             <>
               {/* Search Icon (Desktop) */}

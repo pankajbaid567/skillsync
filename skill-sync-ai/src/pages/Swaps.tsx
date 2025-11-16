@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RatingModal } from "@/components/RatingModal";
+import { quickCelebrate } from "@/lib/celebrations";
 import { 
   Search, 
   Bell, 
@@ -145,12 +146,23 @@ const Swaps = () => {
       });
 
   const handleComplete = (swap: Swap) => {
+    // Trigger celebration for completing swap
+    quickCelebrate.swapCompleted();
+    
     setSelectedSwap(swap);
     setShowRatingModal(true);
   };
 
   const handleRatingSubmit = (rating: number, comment: string) => {
     console.log("Rating submitted:", { rating, comment, swap: selectedSwap });
+    
+    // Trigger celebration if 5-star review
+    if (rating === 5) {
+      setTimeout(() => {
+        quickCelebrate.reviewReceived();
+      }, 500);
+    }
+    
     setShowRatingModal(false);
   };
 

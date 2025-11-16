@@ -5,7 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SocketProvider } from "@/contexts/SocketContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute, PublicOnlyRoute } from "@/components/ProtectedRoute";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { PageTransition } from "@/components/PageTransition";
+import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -31,12 +35,21 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <AuthProvider>
-        <SocketProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
+      <ThemeProvider defaultTheme="system" storageKey="skillsync-theme">
+        <AuthProvider>
+          <SocketProvider>
+            <TooltipProvider>
+              {/* Global animated background */}
+              <AnimatedBackground />
+              
+              {/* Scroll progress indicator */}
+              <ScrollProgressBar />
+              
+              <Toaster />
+              <Sonner />
+            
+            <PageTransition>
+              <Routes>
               {/* Public routes */}
               <Route path="/" element={<Index />} />
               
@@ -119,9 +132,11 @@ const App = () => (
               {/* 404 catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </PageTransition>
           </TooltipProvider>
         </SocketProvider>
       </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </QueryClientProvider>
 );

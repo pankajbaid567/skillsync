@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AIMatchCard } from "@/components/AIMatchCard";
 import { EmptyState } from "@/components/EmptyState";
+import { quickCelebrate } from "@/lib/celebrations";
 import { Sparkles, Search, Bell, Filter, TrendingUp } from "lucide-react";
 import {
   Select,
@@ -19,6 +20,13 @@ import {
 
 const Matches = () => {
   const [filter, setFilter] = useState("all");
+
+  const handleConnect = (matchName: string) => {
+    // Trigger match celebration
+    quickCelebrate.match();
+    console.log("Connect with", matchName);
+    // Here you would typically send a swap request
+  };
 
   // Mock data for AI matches
   const aiMatches = [
@@ -217,7 +225,7 @@ const Matches = () => {
                         skillOffered={match.skillOffered}
                         skillWanted={match.skillWanted}
                         compatibility={match.compatibility}
-                        onConnect={() => console.log("Connect with", match.name)}
+                        onConnect={() => handleConnect(match.name)}
                       />
                       {/* Purple glow animation for AI section */}
                       <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-br from-accent/20 to-primary/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

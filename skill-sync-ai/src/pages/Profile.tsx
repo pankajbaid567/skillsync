@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { ReviewCard } from "@/components/ReviewCard";
 import { SwapRequestModal } from "@/components/SwapRequestModal";
 import { EmptyState } from "@/components/EmptyState";
+import { CelebrationSettings } from "@/components/CelebrationSettings";
 import { Star, MapPin, Calendar, Edit, Repeat, Mail, Sparkles, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Search, Bell } from "lucide-react";
@@ -264,6 +265,9 @@ const Profile = () => {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Celebration Settings */}
+              <CelebrationSettings />
 
               {/* Contact Section */}
               <Card className="border-border/40 shadow-md rounded-2xl">
