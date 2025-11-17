@@ -100,9 +100,15 @@ export const FloatingSkillBubbles = ({ skills: providedSkills }: FloatingSkillBu
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    mouseX.set(e.clientX - rect.left);
-    mouseY.set(e.clientY - rect.top);
+    
+    // Use RAF for better performance
+    requestAnimationFrame(() => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      mouseX.set(e.clientX - rect.left);
+      mouseY.set(e.clientY - rect.top);
+    });
   };
 
   return (
@@ -110,6 +116,10 @@ export const FloatingSkillBubbles = ({ skills: providedSkills }: FloatingSkillBu
       ref={containerRef}
       className="w-full h-full overflow-hidden"
       onMouseMove={handleMouseMove}
+      style={{
+        willChange: 'auto',
+        transform: 'translateZ(0)',
+      }}
     >
       {skills.map((skill, index) => {
         // Calculate constrained movement based on initial position
@@ -132,6 +142,8 @@ export const FloatingSkillBubbles = ({ skills: providedSkills }: FloatingSkillBu
               top: `${skill.y}%`,
               width: skill.size,
               height: skill.size,
+              willChange: 'transform, opacity',
+              transform: 'translateZ(0)',
             }}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ 

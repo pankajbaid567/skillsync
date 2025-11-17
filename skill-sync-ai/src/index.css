@@ -129,8 +129,38 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  /* Smooth scrolling with performance optimizations */
+  html {
+    scroll-behavior: smooth;
+    /* GPU acceleration for smooth scrolling */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
     @apply bg-background text-foreground;
+    /* Hardware acceleration */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    /* Optimize scroll performance */
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
+  }
+
+  /* Optimize all scrollable containers */
+  * {
+    /* Smooth scrolling for all elements */
+    scroll-behavior: smooth;
+  }
+
+  /* Performance boost for animated elements */
+  [class*="animate-"],
+  [class*="motion-"],
+  .scroll-smooth {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 }
 
@@ -154,4 +184,69 @@ All colors MUST be HSL.
     transform: scale(1) translateY(0);
     opacity: 1;
   }
+}
+
+/* Smooth Scroll Performance Optimizations */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-padding-top: 80px; /* Account for fixed header */
+  }
+  
+  /* Smooth scroll for anchor links */
+  a[href^="#"] {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Performance optimizations for scroll containers */
+.scroll-container {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  /* Better scroll performance */
+  contain: layout style paint;
+  will-change: scroll-position;
+}
+
+/* GPU acceleration for fixed elements */
+.fixed,
+.sticky,
+[class*="fixed"],
+[class*="sticky"] {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimize images during scroll */
+img,
+video,
+iframe {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Better text rendering during scroll */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Prevent layout shift during scroll */
+.prevent-layout-shift {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
 }
