@@ -28,7 +28,7 @@ In today's fast-paced digital world, millions of learners and professionals seek
 - 🤝 Swap skills with peers
 - 🎓 Find mentors matching their learning goals
 - 🚀 Collaborate on real-world projects
-- 🤖 Leverage AI-based skill matching and recommendations
+- 🤖 Leverage skill matching and recommendations
 
 This creates a **global network of peer-to-peer learning and mentorship**, making skill development accessible to everyone.
 
