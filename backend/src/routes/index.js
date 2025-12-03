@@ -5,6 +5,7 @@ import swapRoutes from './swap.routes.js';
 import reviewRoutes from './review.routes.js';
 import matchRoutes from './match.routes.js';
 import discoverRoutes from './discover.routes.js';
+import messageRoutes from './message.routes.js';
 
 const router = express.Router();
 
@@ -15,5 +16,6 @@ router.use('/swaps', swapRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/match', matchRoutes);
 router.use('/discover', discoverRoutes);
+router.use('/messages', messageRoutes);
 
 export default router;

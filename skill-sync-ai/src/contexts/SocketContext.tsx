@@ -19,11 +19,16 @@ interface SocketContextType {
   sendTyping: (swapId: number, isTyping: boolean) => void;
   onMessage: (callback: (message: Message) => void) => void;
   onTyping: (callback: (data: { swapId: number; userId: number; isTyping: boolean }) => void) => void;
+  onNotification: (callback: (notification: any) => void) => void;
+  notifications: any[];
+  markNotificationAsRead: (id: string) => void;
+  deleteNotification: (id: string) => void;
+  clearAllNotifications: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3000';
+const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:4000';
 
 interface SocketProviderProps {
   children: ReactNode;
@@ -32,6 +37,7 @@ interface SocketProviderProps {
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const { isAuthenticated, user } = useAuth();
 
   // Initialize socket connection
@@ -76,6 +82,27 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     newSocket.on('error', (error: any) => {
       console.error('🔴 Socket error:', error);
       toast.error(error.message || 'Chat error occurred');
+    });
+
+    // Global notification listener
+    newSocket.on('notification', (data: any) => {
+      const newNotification = {
+        id: Date.now().toString(),
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        timestamp: new Date(data.timestamp),
+        read: false,
+        actionUrl: data.type === 'message' ? `/messages?swapId=${data.data.swapId}` : '/swaps',
+        data: data.data,
+      };
+
+      setNotifications(prev => [newNotification, ...prev]);
+
+      // Show toast notification
+      toast.info(data.title, {
+        description: data.message,
+      });
     });
 
     setSocket(newSocket);
@@ -187,6 +214,48 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     [socket]
   );
 
+  /**
+   * Listen for notifications
+   */
+  const onNotification = useCallback(
+    (callback: (notification: any) => void) => {
+      if (!socket) return;
+
+      socket.on('notification', callback);
+
+      // Return cleanup function
+      return () => {
+        socket.off('notification', callback);
+      };
+    },
+    [socket]
+  );
+
+  /**
+   * Mark notification as read
+   */
+  const markNotificationAsRead = useCallback((id: string) => {
+    setNotifications(prev =>
+      prev.map(notif =>
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
+  }, []);
+
+  /**
+   * Delete notification
+   */
+  const deleteNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(notif => notif.id !== id));
+  }, []);
+
+  /**
+   * Clear all notifications
+   */
+  const clearAllNotifications = useCallback(() => {
+    setNotifications([]);
+  }, []);
+
   const value: SocketContextType = {
     socket,
     isConnected,
@@ -196,6 +265,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     sendTyping,
     onMessage,
     onTyping,
+    onNotification,
+    notifications,
+    markNotificationAsRead,
+    deleteNotification,
+    clearAllNotifications,
   };
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

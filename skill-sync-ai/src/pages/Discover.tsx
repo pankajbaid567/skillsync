@@ -1,3 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
+import { discoverUsers } from "@/services/match.service";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,36 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Search, Filter, Users, Star } from "lucide-react";
 
 const Discover = () => {
-  // Mock data for demonstration
-  const users = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      avatar: "",
-      skills: ["React", "UI/UX Design", "Figma"],
-      seeking: ["Python", "Data Science"],
-      rating: 4.8,
-      swaps: 12
-    },
-    {
-      id: 2,
-      name: "Mike Chen",
-      avatar: "",
-      skills: ["Python", "Machine Learning", "AI"],
-      seeking: ["React", "Frontend"],
-      rating: 4.9,
-      swaps: 18
-    },
-    {
-      id: 3,
-      name: "Emma Davis",
-      avatar: "",
-      skills: ["Node.js", "MongoDB", "Backend"],
-      seeking: ["UI Design", "Figma"],
-      rating: 4.7,
-      swaps: 15
-    },
-  ];
+  const navigate = useNavigate();
+  // Fetch real users
+  const { data: usersData, isLoading } = useQuery({
+    queryKey: ['discoverUsers'],
+    queryFn: () => discoverUsers(),
+  });
+
+  const users = usersData || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -76,7 +57,7 @@ const Discover = () => {
                 <CardHeader>
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16 ring-2 ring-primary/10">
-                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarImage src={user.avatar || ""} alt={user.name} />
                       <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-lg">
                         {user.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
@@ -91,7 +72,7 @@ const Discover = () => {
                         <span className="text-sm text-muted-foreground">•</span>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Users className="h-3 w-3" />
-                          {user.swaps} swaps
+                          {0} swaps
                         </div>
                       </div>
                     </div>
@@ -103,7 +84,7 @@ const Discover = () => {
                       Can teach
                     </CardDescription>
                     <div className="flex flex-wrap gap-2">
-                      {user.skills.map((skill, idx) => (
+                      {user.skillsOffered.map((skill, idx) => (
                         <Badge key={idx} variant="secondary">
                           {skill}
                         </Badge>
@@ -115,14 +96,14 @@ const Discover = () => {
                       Wants to learn
                     </CardDescription>
                     <div className="flex flex-wrap gap-2">
-                      {user.seeking.map((skill, idx) => (
+                      {user.skillsWanted.map((skill, idx) => (
                         <Badge key={idx} variant="outline">
                           {skill}
                         </Badge>
                       ))}
                     </div>
                   </div>
-                  <Button className="w-full">View Profile</Button>
+                  <Button className="w-full" onClick={() => navigate(`/profile/${user.id}`)}>View Profile</Button>
                 </CardContent>
               </Card>
             ))}

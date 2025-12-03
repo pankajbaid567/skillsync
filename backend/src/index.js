@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import pino from 'pino';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
+import { initSocket } from './lib/socket.js';
 import routes from './routes/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { setupSocketIO } from './services/chat.service.js';
@@ -64,16 +64,16 @@ const corsOptions = {
       logger.info('✅ CORS: No origin (allowed)');
       return callback(null, true);
     }
-    
+
     // Normalize the incoming origin
     const normalizedOrigin = origin.replace(/\/$/, '');
-    
+
     // Check if origin is allowed
     if (allowedOrigins.indexOf(normalizedOrigin) !== -1) {
       logger.info(`✅ CORS: Allowed origin - ${origin}`);
       return callback(null, true);
     }
-    
+
     logger.warn(`❌ CORS: Blocked origin - ${origin}`);
     logger.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
     return callback(new Error('Not allowed by CORS'), false);
@@ -133,13 +133,7 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // Setup Socket.IO with same CORS policy
-const io = new Server(httpServer, {
-  cors: {
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ['GET', 'POST'],
-  },
-});
+const io = initSocket(httpServer, allowedOrigins);
 
 setupSocketIO(io);
 

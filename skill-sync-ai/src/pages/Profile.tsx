@@ -11,13 +11,16 @@ import { ReviewCard } from "@/components/ReviewCard";
 import { SwapRequestModal } from "@/components/SwapRequestModal";
 import { EmptyState } from "@/components/EmptyState";
 import { CelebrationSettings } from "@/components/CelebrationSettings";
+import { EditProfileModal } from "@/components/EditProfileModal";
 import { Star, MapPin, Calendar, Edit, Repeat, Mail, Sparkles, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Search, Bell } from "lucide-react";
+import { Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const Profile = () => {
   const [showSwapModal, setShowSwapModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const { user, isLoading: authLoading } = useAuth();
 
   // Format join date
@@ -87,12 +90,7 @@ const Profile = () => {
                   />
                 </div>
               </div>
-              <Button variant="ghost" size="icon" className="relative rounded-2xl">
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] font-bold text-white flex items-center justify-center">
-                  3
-                </span>
-              </Button>
+              <NotificationBell />
               <Avatar className="h-9 w-9 ring-2 ring-primary/10 cursor-pointer">
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-sm">
@@ -116,7 +114,7 @@ const Profile = () => {
                         {profileData.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
-                    
+
                     <div className="flex-1 space-y-3">
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div>
@@ -132,9 +130,9 @@ const Profile = () => {
                             </span>
                           </div>
                         </div>
-                        
+
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="rounded-xl">
+                          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setShowEditModal(true)}>
                             <Edit className="h-4 w-4 mr-2" />
                             Edit Profile
                           </Button>
@@ -189,7 +187,7 @@ const Profile = () => {
                     {profileData.skillsOffered.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {profileData.skillsOffered.map((skill, index) => (
-                          <Badge 
+                          <Badge
                             key={index}
                             className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 transition-colors rounded-xl px-3 py-1.5"
                           >
@@ -217,7 +215,7 @@ const Profile = () => {
                     {profileData.skillsWanted.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {profileData.skillsWanted.map((skill, index) => (
-                          <Badge 
+                          <Badge
                             key={index}
                             className="bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20 transition-colors rounded-xl px-3 py-1.5"
                           >
@@ -285,6 +283,12 @@ const Profile = () => {
           </main>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+      />
 
       {/* Swap Request Modal */}
       <SwapRequestModal

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getMatches } from "@/services/match.service";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,65 +30,32 @@ const Matches = () => {
     // Here you would typically send a swap request
   };
 
-  // Mock data for AI matches
-  const aiMatches = [
-    {
-      name: "Emma Wilson",
-      avatar: "",
-      skillOffered: "GraphQL",
-      skillWanted: "TypeScript",
-      compatibility: 95,
-      matchReason: "Perfect match! Emma's GraphQL expertise aligns with your learning goals.",
-    },
-    {
-      name: "Michael Brown",
-      avatar: "",
-      skillOffered: "Node.js",
-      skillWanted: "React",
-      compatibility: 88,
-      matchReason: "Great fit! You both want to learn each other's expertise.",
-    },
-    {
-      name: "Sarah Davis",
-      avatar: "",
-      skillOffered: "AWS",
-      skillWanted: "Docker",
-      compatibility: 82,
-      matchReason: "High compatibility based on your skill preferences.",
-    },
-    {
-      name: "Tom Harris",
-      avatar: "",
-      skillOffered: "Python",
-      skillWanted: "JavaScript",
-      compatibility: 79,
-      matchReason: "Good match for your Python learning goals.",
-    },
-    {
-      name: "Lisa Chen",
-      avatar: "",
-      skillOffered: "UI/UX Design",
-      skillWanted: "React",
-      compatibility: 76,
-      matchReason: "Your React skills match Lisa's learning needs.",
-    },
-    {
-      name: "David Kumar",
-      avatar: "",
-      skillOffered: "Machine Learning",
-      skillWanted: "Web Development",
-      compatibility: 73,
-      matchReason: "Aligned interests in technology and learning.",
-    },
-  ];
+  // Fetch real matches
+  const { data: matchesData, isLoading } = useQuery({
+    queryKey: ['aiMatches'],
+    queryFn: getMatches,
+  });
 
-  const filteredMatches = filter === "all" 
-    ? aiMatches 
+  const matches = matchesData || [];
+
+  // Map API response to UI format
+  const aiMatches = matches.map(match => ({
+    userId: match.user.id,
+    name: match.user.name,
+    avatar: match.user.avatar,
+    skillOffered: match.user.skillsOffered[0] || 'N/A',
+    skillWanted: match.user.skillsWanted[0] || 'N/A',
+    compatibility: Math.round(match.score),
+    matchReason: `Matches based on common skills: ${match.commonSkills?.join(', ') || 'Various skills'}`
+  }));
+
+  const filteredMatches = filter === "all"
+    ? aiMatches
     : aiMatches.filter(match => {
-        if (filter === "high") return match.compatibility >= 80;
-        if (filter === "medium") return match.compatibility >= 70 && match.compatibility < 80;
-        return true;
-      });
+      if (filter === "high") return match.compatibility >= 80;
+      if (filter === "medium") return match.compatibility >= 70 && match.compatibility < 80;
+      return true;
+    });
 
   return (
     <SidebarProvider>
@@ -164,7 +133,7 @@ const Matches = () => {
                     <div className="flex-1">
                       <h3 className="font-semibold mb-1">AI Matching Active</h3>
                       <p className="text-sm text-muted-foreground">
-                        We've found <span className="font-semibold text-foreground">{aiMatches.length} potential matches</span> for you this week. 
+                        We've found <span className="font-semibold text-foreground">{aiMatches.length} potential matches</span> for you this week.
                         Connect with highly compatible partners to accelerate your learning journey!
                       </p>
                     </div>
@@ -220,6 +189,7 @@ const Matches = () => {
                   {filteredMatches.map((match, index) => (
                     <div key={index} className="group relative">
                       <AIMatchCard
+                        userId={match.userId}
                         name={match.name}
                         avatar={match.avatar}
                         skillOffered={match.skillOffered}
@@ -249,7 +219,7 @@ const Matches = () => {
                     <div>
                       <h4 className="font-semibold text-sm mb-1">Pro Tip</h4>
                       <p className="text-sm text-muted-foreground">
-                        Higher compatibility matches are based on skill alignment, learning styles, and mutual goals. 
+                        Higher compatibility matches are based on skill alignment, learning styles, and mutual goals.
                         Connect with 80%+ matches for the best learning experience!
                       </p>
                     </div>

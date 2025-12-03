@@ -2,10 +2,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/GlassCard";
-import { Sparkles } from "lucide-react";
+import { User } from "lucide-react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 interface AIMatchCardProps {
+  userId: number;
   name: string;
   avatar?: string;
   skillOffered: string;
@@ -14,19 +16,26 @@ interface AIMatchCardProps {
   onConnect?: () => void;
 }
 
-export const AIMatchCard = ({ 
-  name, 
-  avatar, 
-  skillOffered, 
-  skillWanted, 
-  compatibility, 
-  onConnect 
+export const AIMatchCard = ({
+  userId,
+  name,
+  avatar,
+  skillOffered,
+  skillWanted,
+  compatibility,
+  onConnect
 }: AIMatchCardProps) => {
+  const navigate = useNavigate();
+
+  const handleViewProfile = () => {
+    navigate(`/profile/${userId}`);
+  };
+
   return (
     <GlassCard hover3D glowColor="accent" className="group relative overflow-hidden">
       {/* AI Glow Effect */}
       <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
+
       <div className="relative p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -44,22 +53,14 @@ export const AIMatchCard = ({
             <div>
               <h3 className="font-semibold text-base text-foreground">{name}</h3>
               <div className="flex items-center gap-1 mt-1">
-                <Sparkles className="h-3 w-3 text-accent animate-pulse" />
-                <span className="text-xs font-medium text-accent">AI Match</span>
+                <Badge className="bg-gradient-to-r from-accent to-primary text-white border-0 text-[10px] px-1.5 py-0">
+                  {compatibility}% Match
+                </Badge>
               </div>
             </div>
           </div>
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", delay: 0.2 }}
-          >
-            <Badge className="bg-gradient-to-r from-accent to-primary text-white border-0 shadow-lg">
-              {compatibility}% Match
-            </Badge>
-          </motion.div>
         </div>
-        
+
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">Offers:</span>
@@ -74,19 +75,19 @@ export const AIMatchCard = ({
             </Badge>
           </div>
         </div>
-        
+
         <motion.div
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          <Button 
-            variant="ai" 
-            className="w-full" 
+          <Button
+            variant="ai"
+            className="w-full"
             size="sm"
-            onClick={onConnect}
+            onClick={handleViewProfile}
           >
-            <Sparkles className="h-4 w-4 mr-2" />
-            Connect Now
+            <User className="h-4 w-4 mr-2" />
+            View Profile
           </Button>
         </motion.div>
       </div>

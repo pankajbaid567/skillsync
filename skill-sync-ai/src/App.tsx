@@ -20,6 +20,10 @@ import Swaps from "./pages/Swaps";
 import Chat from "./pages/Chat";
 import Reviews from "./pages/Reviews";
 import Discover from "./pages/Discover";
+import UserProfile from "./pages/UserProfile";
+import Settings from "./pages/Settings";
+import Notifications from "./pages/Notifications";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -41,101 +45,133 @@ const App = () => (
             <TooltipProvider>
               {/* Global animated background */}
               <AnimatedBackground />
-              
+
               {/* Scroll progress indicator */}
               <ScrollProgressBar />
-              
+
               <Toaster />
               <Sonner />
-            
-            <PageTransition>
-              <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              
-              {/* Public only routes (redirect if authenticated) */}
-              <Route
-                path="/login"
-                element={
-                  <PublicOnlyRoute>
-                    <Login />
-                  </PublicOnlyRoute>
-                }
-              />
-              <Route
-                path="/signup"
-                element={
-                  <PublicOnlyRoute>
-                    <Signup />
-                  </PublicOnlyRoute>
-                }
-              />
-              
-              {/* Protected routes (require authentication) */}
-              <Route
-                path="/discover"
-                element={
-                  <ProtectedRoute>
-                    <Discover />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/matches"
-                element={
-                  <ProtectedRoute>
-                    <Matches />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/swaps"
-                element={
-                  <ProtectedRoute>
-                    <Swaps />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/messages"
-                element={
-                  <ProtectedRoute>
-                    <Chat />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/reviews"
-                element={
-                  <ProtectedRoute>
-                    <Reviews />
-                  </ProtectedRoute>
-                }
-              />
-              
-              {/* 404 catch-all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            </PageTransition>
-          </TooltipProvider>
-        </SocketProvider>
-      </AuthProvider>
+
+              <PageTransition>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+
+                  {/* Public only routes (redirect if authenticated) */}
+                  <Route
+                    path="/login"
+                    element={
+                      <PublicOnlyRoute>
+                        <Login />
+                      </PublicOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="/signup"
+                    element={
+                      <PublicOnlyRoute>
+                        <Signup />
+                      </PublicOnlyRoute>
+                    }
+                  />
+
+                  {/* Protected routes (require authentication) */}
+                  <Route
+                    path="/discover"
+                    element={
+                      <ProtectedRoute>
+                        <Discover />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile/:userId"
+                    element={
+                      <ProtectedRoute>
+                        <UserProfile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/matches"
+                    element={
+                      <ProtectedRoute>
+                        <Matches />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/swaps"
+                    element={
+                      <ProtectedRoute>
+                        <Swaps />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/messages"
+                    element={
+                      <ProtectedRoute>
+                        <Chat />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reviews"
+                    element={
+                      <ProtectedRoute>
+                        <Reviews />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <ProtectedRoute>
+                        <Settings />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/notifications"
+                    element={
+                      <ProtectedRoute>
+                        <Notifications />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/help"
+                    element={
+                      <ProtectedRoute>
+                        <Help />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* 404 catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </PageTransition>
+            </TooltipProvider>
+          </SocketProvider>
+        </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   </QueryClientProvider>

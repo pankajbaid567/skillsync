@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/SocketContext";
+import { getSwapMessages } from "@/services/message.service";
+import { getMySwaps } from "@/services/swap.service";
+import { getUserById } from "@/services/user.service";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,14 +15,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Search, 
-  Bell, 
+import { NotificationBell } from "@/components/NotificationBell";
+import { EmptyState } from "@/components/EmptyState";
+import {
+  Search,
   Send,
   Paperclip,
   Smile,
   MoreVertical,
   Star,
+  Loader2,
+  MessageSquare,
+  Repeat,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -24,110 +34,179 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
-interface Contact {
+interface ConversationUser {
   id: number;
   name: string;
   avatar?: string;
-  lastMessage: string;
-  lastMessageTime: string;
-  unread: number;
-  online: boolean;
 }
 
-interface Message {
-  id: number;
-  message: string;
-  timestamp: string;
-  isOwn: boolean;
+interface Conversation {
+  swapId: number;
+  partner: ConversationUser;
+  lastMessage?: string;
+  lastMessageTime?: Date;
+  unreadCount: number;
+  skillOffered: string;
+  skillRequested: string;
+  status: string;
 }
 
 const Chat = () => {
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const { user } = useAuth();
+  const { socket, isConnected, joinSwapRoom, leaveSwapRoom } = useSocket();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedSwapId, setSelectedSwapId] = useState<number | null>(null);
+  const [directUserId, setDirectUserId] = useState<number | null>(null);
   const [messageInput, setMessageInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Mock data for contacts
-  const contacts: Contact[] = [
-    {
-      id: 1,
-      name: "Alice Johnson",
-      lastMessage: "That sounds great! When can we start?",
-      lastMessageTime: "2m ago",
-      unread: 2,
-      online: true,
-    },
-    {
-      id: 2,
-      name: "Bob Smith",
-      lastMessage: "Thanks for the session yesterday!",
-      lastMessageTime: "1h ago",
-      unread: 0,
-      online: true,
-    },
-    {
-      id: 3,
-      name: "Carol White",
-      lastMessage: "Let me check my schedule",
-      lastMessageTime: "3h ago",
-      unread: 1,
-      online: false,
-    },
-    {
-      id: 4,
-      name: "David Lee",
-      lastMessage: "Perfect! See you then.",
-      lastMessageTime: "1d ago",
-      unread: 0,
-      online: false,
-    },
-  ];
+  // Join swap room when selected
+  useEffect(() => {
+    if (selectedSwapId && isConnected) {
+      joinSwapRoom(selectedSwapId);
 
-  // Mock messages for selected contact
-  const messages: Message[] = selectedContact ? [
-    {
-      id: 1,
-      message: "Hey! I'm interested in learning React from you.",
-      timestamp: "10:30 AM",
-      isOwn: false,
+      return () => {
+        leaveSwapRoom(selectedSwapId);
+      };
+    }
+  }, [selectedSwapId, isConnected, joinSwapRoom, leaveSwapRoom]);
+
+  // Get swapId or userId from URL params
+  useEffect(() => {
+    const swapIdParam = searchParams.get('swapId');
+    const userIdParam = searchParams.get('userId');
+
+    if (swapIdParam) {
+      setSelectedSwapId(Number(swapIdParam));
+      setDirectUserId(null);
+    } else if (userIdParam) {
+      setDirectUserId(Number(userIdParam));
+      setSelectedSwapId(null);
+    }
+  }, [searchParams]);
+
+  // Fetch all swaps to build conversations list
+  const { data: swaps = [], isLoading: swapsLoading } = useQuery({
+    queryKey: ['mySwaps'],
+    queryFn: getMySwaps,
+  });
+
+  // Fetch direct user data if userId is provided
+  const { data: directUser, isLoading: directUserLoading } = useQuery({
+    queryKey: ['directUser', directUserId],
+    queryFn: () => getUserById(directUserId!),
+    enabled: !!directUserId,
+  });
+
+  // Fetch messages for selected swap
+  const { data: messages = [], isLoading: messagesLoading, refetch: refetchMessages } = useQuery({
+    queryKey: ['swapMessages', selectedSwapId],
+    queryFn: () => getSwapMessages(selectedSwapId!),
+    enabled: !!selectedSwapId,
+  });
+
+  // For direct messaging, we'll use an empty array for now (no message history)
+  const directMessages: any[] = [];
+
+  // Build conversations from swaps
+  const conversations: Conversation[] = swaps
+    .filter(swap => swap.status === 'ACCEPTED' || swap.status === 'COMPLETED')
+    .map(swap => {
+      const isRequester = swap.requester.id === user?.id;
+      const partner = isRequester ? swap.receiver : swap.requester;
+
+      return {
+        swapId: swap.id,
+        partner: {
+          id: partner.id,
+          name: partner.name,
+          avatar: partner.avatar,
+        },
+        lastMessage: swap.lastMessage?.content,
+        lastMessageTime: swap.lastMessage?.createdAt ? new Date(swap.lastMessage.createdAt) : undefined,
+        unreadCount: swap.unreadCount || 0,
+        skillOffered: swap.skillOffered,
+        skillRequested: swap.skillRequested,
+        status: swap.status,
+      };
+    });
+
+  // Filter conversations based on search
+  const filteredConversations = conversations.filter(conv =>
+    conv.partner.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const selectedConversation = conversations.find(c => c.swapId === selectedSwapId);
+
+  // Create direct conversation object if userId is provided
+  const directConversation = directUser ? {
+    partner: {
+      id: directUser.id,
+      name: directUser.name,
+      avatar: directUser.avatar,
     },
-    {
-      id: 2,
-      message: "Hi! That's great! I'd love to help you learn React. In exchange, I'd like to learn UI/UX design from you.",
-      timestamp: "10:32 AM",
-      isOwn: true,
-    },
-    {
-      id: 3,
-      message: "Perfect match! I've been doing UI/UX for 5 years now.",
-      timestamp: "10:35 AM",
-      isOwn: false,
-    },
-    {
-      id: 4,
-      message: "Awesome! When would be a good time for our first session?",
-      timestamp: "10:37 AM",
-      isOwn: true,
-    },
-    {
-      id: 5,
-      message: "How about this weekend? Saturday afternoon works for me.",
-      timestamp: "10:40 AM",
-      isOwn: false,
-    },
-    {
-      id: 6,
-      message: "That sounds great! When can we start?",
-      timestamp: "10:42 AM",
-      isOwn: false,
-    },
-  ] : [];
+    skillOffered: 'Direct Message',
+    skillRequested: '',
+    status: 'DIRECT',
+  } : null;
+
+  // Determine which conversation/messages to show
+  const activeConversation = selectedConversation || directConversation;
+  const activeMessages = selectedSwapId ? messages : directMessages;
+  const isDirectMessage = !!directUserId && !selectedSwapId;
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Listen for new messages via socket
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleNewMessage = (message: any) => {
+      if (message.swapId === selectedSwapId) {
+        refetchMessages();
+      }
+    };
+
+    socket.on('message', handleNewMessage);
+
+    return () => {
+      socket.off('message', handleNewMessage);
+    };
+  }, [socket, isConnected, selectedSwapId, refetchMessages]);
 
   const handleSendMessage = () => {
-    if (messageInput.trim()) {
-      console.log("Sending message:", messageInput);
-      setMessageInput("");
+    if (!messageInput.trim()) return;
+
+    if (isDirectMessage) {
+      // For direct messages, prompt user to create a swap first
+      toast.info("To send messages, please create a skill swap request first.", {
+        description: "Click 'Request Swap' button above to start exchanging skills.",
+      });
+      return;
     }
+
+    if (!selectedSwapId || !socket || !isConnected) {
+      if (!isConnected) {
+        toast.error("Not connected to chat server");
+      }
+      return;
+    }
+
+    // Send message via socket
+    socket.emit('message', {
+      swapId: selectedSwapId,
+      content: messageInput.trim(),
+    });
+
+    setMessageInput("");
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -136,6 +215,22 @@ const Chat = () => {
       handleSendMessage();
     }
   };
+
+  const handleSelectConversation = (swapId: number) => {
+    setSelectedSwapId(swapId);
+    setSearchParams({ swapId: swapId.toString() });
+  };
+
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const userInitials = user?.name ? getUserInitials(user.name) : "U";
 
   return (
     <SidebarProvider>
@@ -149,16 +244,11 @@ const Chat = () => {
               <div className="flex-1 flex items-center gap-4">
                 <h1 className="text-xl font-bold font-display">Messages</h1>
               </div>
-              <Button variant="ghost" size="icon" className="relative rounded-2xl">
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] font-bold text-white flex items-center justify-center">
-                  3
-                </span>
-              </Button>
-              <Avatar className="h-9 w-9 ring-2 ring-primary/10 cursor-pointer">
-                <AvatarImage src="" alt="User" />
+              <NotificationBell />
+              <Avatar className="h-9 w-9 ring-2 ring-primary/10 cursor-pointer" onClick={() => navigate('/profile')}>
+                <AvatarImage src={user?.avatar} alt={user?.name} />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-sm">
-                  JD
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
             </div>
@@ -166,7 +256,7 @@ const Chat = () => {
 
           {/* Main Content */}
           <div className="flex-1 flex overflow-hidden">
-            {/* Contacts Sidebar */}
+            {/* Conversations Sidebar */}
             <aside className="w-80 border-r border-border/40 bg-background flex flex-col">
               <div className="p-4 border-b border-border/40">
                 <div className="relative">
@@ -174,81 +264,113 @@ const Chat = () => {
                   <Input
                     type="search"
                     placeholder="Search conversations..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 h-10 bg-muted/50 border-border/40 rounded-2xl"
                   />
                 </div>
               </div>
 
               <ScrollArea className="flex-1">
-                <div className="p-2 space-y-1">
-                  {contacts.map((contact) => (
-                    <button
-                      key={contact.id}
-                      onClick={() => setSelectedContact(contact)}
-                      className={`w-full p-3 rounded-xl transition-all duration-200 hover:bg-muted/50 flex items-center gap-3 ${
-                        selectedContact?.id === contact.id ? "bg-muted" : ""
-                      }`}
-                    >
-                      <div className="relative">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={contact.avatar} alt={contact.name} />
-                          <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white">
-                            {contact.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        {contact.online && (
-                          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-success ring-2 ring-background" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0 text-left">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold text-sm truncate">{contact.name}</h3>
-                          <span className="text-xs text-muted-foreground">{contact.lastMessageTime}</span>
+                {swapsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : filteredConversations.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <MessageSquare className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      {searchQuery ? "No conversations found" : "No active conversations yet"}
+                    </p>
+                    {!searchQuery && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4 rounded-xl"
+                        onClick={() => navigate('/matches')}
+                      >
+                        Find Matches
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-2 space-y-1">
+                    {filteredConversations.map((conversation) => (
+                      <button
+                        key={conversation.swapId}
+                        onClick={() => handleSelectConversation(conversation.swapId)}
+                        className={`w-full p-3 rounded-xl transition-all duration-200 hover:bg-muted/50 flex items-center gap-3 ${selectedSwapId === conversation.swapId ? "bg-muted" : ""
+                          }`}
+                      >
+                        <div className="relative">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={conversation.partner.avatar} alt={conversation.partner.name} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white">
+                              {getUserInitials(conversation.partner.name)}
+                            </AvatarFallback>
+                          </Avatar>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">{contact.lastMessage}</p>
-                      </div>
-                      {contact.unread > 0 && (
-                        <Badge className="bg-primary text-white h-5 w-5 p-0 flex items-center justify-center text-xs">
-                          {contact.unread}
-                        </Badge>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="font-semibold text-sm truncate">{conversation.partner.name}</h3>
+                            {conversation.lastMessageTime && (
+                              <span className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(conversation.lastMessageTime, { addSuffix: true })}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {conversation.lastMessage || `${conversation.skillOffered} ↔ ${conversation.skillRequested}`}
+                          </p>
+                        </div>
+                        {conversation.unreadCount > 0 && (
+                          <Badge className="bg-primary text-white h-5 min-w-5 px-1.5 flex items-center justify-center text-xs">
+                            {conversation.unreadCount}
+                          </Badge>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </ScrollArea>
             </aside>
 
             {/* Chat Area */}
             <div className="flex-1 flex flex-col bg-muted/30">
-              {selectedContact ? (
+              {activeConversation ? (
                 <>
                   {/* Chat Header */}
                   <div className="p-4 border-b border-border/40 bg-background/95 backdrop-blur">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={selectedContact.avatar} alt={selectedContact.name} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white">
-                              {selectedContact.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          {selectedContact.online && (
-                            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-success ring-2 ring-background" />
-                          )}
-                        </div>
+                        <Avatar className="h-10 w-10 cursor-pointer" onClick={() => navigate(`/profile/${activeConversation.partner.id}`)}>
+                          <AvatarImage src={activeConversation.partner.avatar} alt={activeConversation.partner.name} />
+                          <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white">
+                            {getUserInitials(activeConversation.partner.name)}
+                          </AvatarFallback>
+                        </Avatar>
                         <div>
-                          <h2 className="font-semibold">{selectedContact.name}</h2>
+                          <h2 className="font-semibold cursor-pointer hover:text-primary" onClick={() => navigate(`/profile/${activeConversation.partner.id}`)}>
+                            {activeConversation.partner.name}
+                          </h2>
                           <p className="text-xs text-muted-foreground">
-                            {selectedContact.online ? "Online" : "Offline"}
+                            {isDirectMessage ? 'Direct Message' : `${activeConversation.skillOffered} ↔ ${activeConversation.skillRequested}`}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="rounded-xl">
-                          <Star className="h-4 w-4 mr-2" />
-                          Rate after completion
-                        </Button>
+                        {!isDirectMessage && activeConversation.status === 'COMPLETED' && (
+                          <Button variant="outline" size="sm" className="rounded-xl">
+                            <Star className="h-4 w-4 mr-2" />
+                            Leave Review
+                          </Button>
+                        )}
+                        {isDirectMessage && (
+                          <Button variant="gradient" size="sm" className="rounded-xl" onClick={() => navigate(`/profile/${activeConversation.partner.id}`)}>
+                            <Repeat className="h-4 w-4 mr-2" />
+                            Request Swap
+                          </Button>
+                        )}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
@@ -256,9 +378,14 @@ const Chat = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Profile</DropdownMenuItem>
-                            <DropdownMenuItem>View Swap Details</DropdownMenuItem>
-                            <DropdownMenuItem>Block User</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/profile/${activeConversation.partner.id}`)}>
+                              View Profile
+                            </DropdownMenuItem>
+                            {!isDirectMessage && (
+                              <DropdownMenuItem onClick={() => navigate(`/swaps`)}>
+                                View Swap Details
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -267,34 +394,38 @@ const Chat = () => {
 
                   {/* Messages Area */}
                   <ScrollArea className="flex-1 p-4">
-                    <div className="space-y-4 max-w-4xl mx-auto">
-                      {messages.map((msg) => (
-                        <ChatMessage
-                          key={msg.id}
-                          message={msg.message}
-                          timestamp={msg.timestamp}
-                          isOwn={msg.isOwn}
-                          senderName={selectedContact.name}
-                        />
-                      ))}
-                      
-                      {/* Typing Indicator */}
-                      {isTyping && (
-                        <div className="flex gap-3 mb-4 animate-fade-in">
-                          <Avatar className="h-8 w-8 mt-1">
-                            <AvatarImage src={selectedContact.avatar} alt={selectedContact.name} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-white text-xs">
-                              {selectedContact.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="bg-muted rounded-2xl px-4 py-2.5 flex items-center gap-1">
-                            <span className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                            <span className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                            <span className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                          </div>
+                    {(messagesLoading || directUserLoading) ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+                    ) : isDirectMessage ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center max-w-md">
+                          <MessageSquare className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold mb-2">Start a Conversation</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            To send messages to {activeConversation.partner.name}, you'll need to create a skill swap request first.
+                          </p>
+                          <Button variant="gradient" className="rounded-xl" onClick={() => navigate(`/profile/${activeConversation.partner.id}`)}>
+                            <Repeat className="h-4 w-4 mr-2" />
+                            Request Skill Swap
+                          </Button>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 max-w-4xl mx-auto">
+                        {activeMessages.map((msg: any) => (
+                          <ChatMessage
+                            key={msg.id}
+                            message={msg.content}
+                            timestamp={new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            isOwn={msg.senderId === user?.id}
+                            senderName={activeConversation.partner.name}
+                          />
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    )}
                   </ScrollArea>
 
                   {/* Message Input */}
@@ -311,37 +442,37 @@ const Chat = () => {
                           onKeyPress={handleKeyPress}
                           className="min-h-[60px] max-h-[120px] resize-none rounded-2xl pr-12"
                         />
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="absolute bottom-2 right-2 rounded-xl h-8 w-8"
                         >
                           <Smile className="h-5 w-5" />
                         </Button>
                       </div>
-                      <Button 
-                        variant="gradient" 
-                        size="icon" 
+                      <Button
+                        variant="gradient"
+                        size="icon"
                         className="rounded-2xl h-10 w-10"
                         onClick={handleSendMessage}
-                        disabled={!messageInput.trim()}
+                        disabled={!messageInput.trim() || !isConnected}
                       >
                         <Send className="h-5 w-5" />
                       </Button>
                     </div>
+                    {!isConnected && (
+                      <p className="text-xs text-destructive text-center mt-2">
+                        Not connected to chat server
+                      </p>
+                    )}
                   </div>
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="mb-4 p-4 rounded-full bg-gradient-to-br from-primary/10 to-secondary/10 inline-block">
-                      <Search className="h-8 w-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-2">Select a conversation</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Choose a contact from the list to start chatting
-                    </p>
-                  </div>
+                  <EmptyState
+                    title="Select a conversation"
+                    description="Choose a contact from the list to start chatting"
+                  />
                 </div>
               )}
             </div>

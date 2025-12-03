@@ -64,6 +64,8 @@ export interface SkillSwap {
   receiver?: User;
   messages?: Message[];
   reviews?: Review[];
+  lastMessage?: Message;
+  unreadCount?: number;
 }
 
 export interface CreateSwapData {

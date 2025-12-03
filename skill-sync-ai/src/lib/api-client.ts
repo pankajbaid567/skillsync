@@ -12,7 +12,7 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, AxiosResp
 import { toast } from 'sonner';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 // Token storage keys
@@ -63,7 +63,7 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem(TOKEN_KEY);
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -126,7 +126,7 @@ apiClient.interceptors.response.use(
         case 401:
           // Unauthorized - Try to refresh token
           const originalRequest = error.config;
-          
+
           if (window.location.pathname.includes('/login') || window.location.pathname.includes('/signup')) {
             // Show specific error message for login/signup
             toast.error(data.message || 'Invalid email or password.');
@@ -162,7 +162,7 @@ apiClient.interceptors.response.use(
             } catch (refreshError) {
               isRefreshing = false;
               processQueue(refreshError, null);
-              
+
               localStorage.removeItem(TOKEN_KEY);
               localStorage.removeItem(REFRESH_TOKEN_KEY);
               localStorage.removeItem(USER_KEY);
@@ -170,7 +170,7 @@ apiClient.interceptors.response.use(
               setTimeout(() => {
                 window.location.href = '/login';
               }, 1500);
-              
+
               return Promise.reject(refreshError);
             }
           } else {
@@ -261,7 +261,7 @@ const processQueue = (error: any, token: string | null = null) => {
       prom.resolve(token!);
     }
   });
-  
+
   failedQueue = [];
 };
 
@@ -270,7 +270,7 @@ const processQueue = (error: any, token: string | null = null) => {
  */
 const refreshAccessToken = async (): Promise<string> => {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-  
+
   if (!refreshToken) {
     throw new Error('No refresh token available');
   }
@@ -279,7 +279,7 @@ const refreshAccessToken = async (): Promise<string> => {
     const response = await axios.post(
       `${API_BASE_URL}/auth/refresh`,
       { refreshToken },
-      { 
+      {
         headers: { 'Content-Type': 'application/json' },
         timeout: REQUEST_TIMEOUT,
       }
@@ -287,7 +287,7 @@ const refreshAccessToken = async (): Promise<string> => {
 
     const { accessToken } = response.data.data;
     localStorage.setItem(TOKEN_KEY, accessToken);
-    
+
     return accessToken;
   } catch (error) {
     // Refresh failed, clear everything and redirect to login

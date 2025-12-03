@@ -134,6 +134,16 @@ export const setupSocketIO = (io) => {
         const roomName = `swap:${swapId}`;
         io.to(roomName).emit('message', message);
 
+        // Notify receiver (if not in room - client side can filter)
+        const receiverId = swap.requesterId === socket.user.id ? swap.receiverId : swap.requesterId;
+        io.to(`user:${receiverId}`).emit('notification', {
+          type: 'message',
+          title: 'New Message',
+          message: `New message from ${socket.user.name}`,
+          data: { swapId, messageId: message.id },
+          timestamp: new Date(),
+        });
+
         logger.info(`Message sent in swap ${swapId} by user ${socket.user.id}`);
       } catch (error) {
         logger.error('Error sending message:', error);

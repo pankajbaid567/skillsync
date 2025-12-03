@@ -1,5 +1,6 @@
 import prisma from '../prisma/client.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { getIO } from '../lib/socket.js';
 
 export const swapService = {
   /**
@@ -52,6 +53,20 @@ export const swapService = {
         },
       },
     });
+
+    // Notify receiver
+    try {
+      const io = getIO();
+      io.to(`user:${receiverId}`).emit('notification', {
+        type: 'swap',
+        title: 'New Swap Request',
+        message: `${swap.requester.name} wants to swap skills with you`,
+        data: { swapId: swap.id },
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to send notification:', error);
+    }
 
     return swap;
   },
@@ -226,6 +241,31 @@ export const swapService = {
         },
       },
     });
+
+    // Notify relevant party
+    try {
+      const io = getIO();
+      const targetUserId = userId === swap.requesterId ? swap.receiverId : swap.requesterId;
+      const actorName = userId === swap.requesterId ? updatedSwap.requester.name : updatedSwap.receiver.name;
+
+      let message = '';
+      if (status === 'ACCEPTED') message = `${actorName} accepted your swap request`;
+      if (status === 'REJECTED') message = `${actorName} rejected your swap request`;
+      if (status === 'COMPLETED') message = `${actorName} marked the swap as completed`;
+      if (status === 'CANCELLED') message = `${actorName} cancelled the swap request`;
+
+      if (message) {
+        io.to(`user:${targetUserId}`).emit('notification', {
+          type: 'swap',
+          title: `Swap ${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}`,
+          message,
+          data: { swapId: swap.id },
+          timestamp: new Date(),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to send notification:', error);
+    }
 
     return updatedSwap;
   },
