@@ -123,6 +123,7 @@ export interface MatchResult {
 
 // ==================== Discovery Types ====================
 export interface DiscoveryFilters {
+  q?: string; // search query for name or bio
   skillsOffered?: string[];
   skillsWanted?: string[];
   location?: string;
